@@ -1,6 +1,9 @@
-// src/routes/reserve.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import {
+  PrismaClient,
+  ReservationStatus,
+  InventoryLogType,
+} from "@prisma/client";
 import { z } from "zod";
 
 const prisma = new PrismaClient();
@@ -12,48 +15,48 @@ const reserveSchema = z.object({
   quantity: z.number().min(1),
 });
 
-router.post("/", async (req, res) => {
-  const parseResult = reserveSchema.safeParse(req.body);
-  if (!parseResult.success) {
-    return res.status(400).json({ error: parseResult.error.issues });
-  }
-
-  const { productId, userId, quantity } = parseResult.data;
-
+router.post("/", async (req, res, next) => {
   try {
-    const reservation = await prisma.$transaction(async (tx: PrismaClient) => {
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-        select: { id: true, stock: true },
-      });
+    const { productId, userId, quantity } = reserveSchema.parse(req.body);
 
+    const reservation = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({ where: { id: productId } });
       if (!product) throw new Error("Product not found");
       if (product.stock < quantity) throw new Error("Not enough stock");
 
       await tx.product.update({
         where: { id: productId },
-        data: { stock: product.stock - quantity },
+        data: { stock: { decrement: quantity } },
       });
 
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-      return await tx.reservation.create({
+      const newReservation = await tx.reservation.create({
         data: {
           productId,
           userId,
           quantity,
-          expiresAt,
-          status: "PENDING",
+          status: ReservationStatus.PENDING,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
         },
       });
+
+      await tx.inventoryLog.create({
+        data: {
+          productId,
+          quantity,
+          type: InventoryLogType.RESERVATION_CREATED,
+          description: `Reservation ${newReservation.id} created for user ${userId}`,
+        },
+      });
+
+      return newReservation;
     });
 
-    return res.status(201).json({
+    res.status(201).json({
       reservationId: reservation.id,
       expiresAt: reservation.expiresAt,
     });
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+  } catch (error) {
+    next(error);
   }
 });
 

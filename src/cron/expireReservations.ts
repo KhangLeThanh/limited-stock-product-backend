@@ -1,14 +1,18 @@
-import { PrismaClient } from "@prisma/client";
+import {
+  PrismaClient,
+  ReservationStatus,
+  InventoryLogType,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function expireReservations() {
+export async function expireReservations(): Promise<void> {
   const now = new Date();
 
   try {
     const expiredReservations = await prisma.reservation.findMany({
       where: {
-        status: "PENDING",
+        status: ReservationStatus.PENDING,
         expiresAt: { lte: now },
       },
     });
@@ -16,7 +20,7 @@ export async function expireReservations() {
     if (expiredReservations.length === 0) return;
 
     for (const resv of expiredReservations) {
-      await prisma.$transaction(async (tx: PrismaClient) => {
+      await prisma.$transaction(async (tx) => {
         await tx.product.update({
           where: { id: resv.productId },
           data: { stock: { increment: resv.quantity } },
@@ -24,22 +28,25 @@ export async function expireReservations() {
 
         await tx.reservation.update({
           where: { id: resv.id },
-          data: { status: "EXPIRED" },
+          data: { status: ReservationStatus.EXPIRED },
         });
 
         await tx.inventoryLog.create({
           data: {
             productId: resv.productId,
             quantity: resv.quantity,
-            type: "RESERVATION_EXPIRED",
+            type: InventoryLogType.RESERVATION_EXPIRED,
             description: `Reservation ${resv.id} expired`,
           },
         });
       });
     }
 
-    console.log(`Expired ${expiredReservations.length} reservations`);
-  } catch (err: any) {
-    console.error("Error expiring reservations:", err.message);
+    console.log(`[Cron] Expired ${expiredReservations.length} reservations`);
+  } catch (error) {
+    console.error(
+      "[Cron] Error expiring reservations:",
+      (error as Error).message
+    );
   }
 }

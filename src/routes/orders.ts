@@ -1,46 +1,41 @@
+// src/routes/orders.ts
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
+import { SortField, SortOrder } from "../utils/enum";
 
-const router = Router();
 const prisma = new PrismaClient();
+const router = Router();
 
 router.get("/", async (req, res, next) => {
   try {
-    // Pagination
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
-    // Sorting
-    const sortBy = (req.query.sortBy as string) || "createdAt";
-    const sortOrder =
-      (req.query.sortOrder as string) === "desc" ? "desc" : "asc";
+    const sortBy = Object.values(SortField).includes(
+      req.query.sortBy as SortField
+    )
+      ? (req.query.sortBy as SortField)
+      : SortField.CREATED_AT;
 
-    // Filtering (optional)
-    const status = req.query.status as string | undefined;
-
-    const where: any = {};
-    if (status) where.status = status;
+    const sortOrder = Object.values(SortOrder).includes(
+      req.query.sortOrder as SortOrder
+    )
+      ? (req.query.sortOrder as SortOrder)
+      : SortOrder.ASC;
 
     const orders = await prisma.order.findMany({
       skip,
       take,
-      where,
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // Total count for frontend pagination
-    const total = await prisma.order.count({ where });
+    const total = await prisma.order.count();
 
-    res.json({
-      page,
-      pageSize,
-      total,
-      orders,
-    });
-  } catch (err) {
-    next(err);
+    res.json({ page, pageSize, total, orders });
+  } catch (error) {
+    next(error);
   }
 });
 
