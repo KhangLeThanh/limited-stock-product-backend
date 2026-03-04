@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  reservations  Reservation[]
+  orders        Order[]
+  createdAt     DateTime      @default(now())
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  name          String
+  stock         Int
+  price         Float
+  reservations  Reservation[]
+  orders        Order[]
+  inventoryLogs InventoryLog[]
+  createdAt     DateTime      @default(now())
+}
+
+model Reservation {
+  id          String   @id @default(uuid())
+  userId      String
+  productId   String
+  quantity    Int
+  status      ReservationStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  userId      String
+  productId   String
+  quantity    Int
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model InventoryLog {
+  id          String   @id @default(uuid())
+  productId   String
+  change      Int
+  reason      String
+  createdAt   DateTime @default(now())
+
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+enum ReservationStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+}
