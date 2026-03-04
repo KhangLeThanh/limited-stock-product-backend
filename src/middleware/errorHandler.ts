@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 
-// Request logger
 export function requestLogger(
   req: Request,
   _res: Response,
@@ -10,7 +9,6 @@ export function requestLogger(
   next();
 }
 
-// Centralized error handler
 interface AppError extends Error {
   statusCode?: number;
 }
@@ -23,8 +21,6 @@ export function errorHandler(
 ) {
   const error = err instanceof Error ? err : new Error("Unknown error");
   const statusCode = (err as AppError).statusCode ?? 500;
-
   console.error(`[${new Date().toISOString()}] Error:`, error.message);
-
   res.status(statusCode).json({ error: error.message });
 }

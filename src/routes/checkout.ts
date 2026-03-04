@@ -22,6 +22,7 @@ router.post("/", async (req, res, next) => {
       const reservation = await tx.reservation.findUnique({
         where: { id: reservationId },
       });
+
       if (!reservation) throw new Error("Reservation not found");
       if (reservation.status !== ReservationStatus.PENDING)
         throw new Error("Reservation cannot be checked out");
@@ -35,6 +36,7 @@ router.post("/", async (req, res, next) => {
           quantity: reservation.quantity,
           totalPrice: 0,
           status: OrderStatus.COMPLETED,
+          reservationId: reservation.id,
         },
       });
 

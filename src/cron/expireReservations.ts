@@ -11,13 +11,10 @@ export async function expireReservations(): Promise<void> {
 
   try {
     const expiredReservations = await prisma.reservation.findMany({
-      where: {
-        status: ReservationStatus.PENDING,
-        expiresAt: { lte: now },
-      },
+      where: { status: ReservationStatus.PENDING, expiresAt: { lte: now } },
     });
 
-    if (expiredReservations.length === 0) return;
+    if (!expiredReservations.length) return;
 
     for (const resv of expiredReservations) {
       await prisma.$transaction(async (tx) => {
@@ -25,12 +22,10 @@ export async function expireReservations(): Promise<void> {
           where: { id: resv.productId },
           data: { stock: { increment: resv.quantity } },
         });
-
         await tx.reservation.update({
           where: { id: resv.id },
           data: { status: ReservationStatus.EXPIRED },
         });
-
         await tx.inventoryLog.create({
           data: {
             productId: resv.productId,

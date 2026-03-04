@@ -1,6 +1,6 @@
 // src/routes/orders.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, OrderStatus } from "@prisma/client";
 import { SortField, SortOrder } from "../utils/enum";
 
 const prisma = new PrismaClient();
@@ -13,6 +13,18 @@ router.get("/", async (req, res, next) => {
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
+    // Filtering
+    const filter: any = {};
+    if (req.query.userId) filter.userId = req.query.userId as string;
+    if (req.query.productId) filter.productId = req.query.productId as string;
+    if (
+      req.query.status &&
+      Object.values(OrderStatus).includes(req.query.status as OrderStatus)
+    ) {
+      filter.status = req.query.status as OrderStatus;
+    }
+
+    // Sorting
     const sortBy = Object.values(SortField).includes(
       req.query.sortBy as SortField
     )
@@ -26,12 +38,13 @@ router.get("/", async (req, res, next) => {
       : SortOrder.ASC;
 
     const orders = await prisma.order.findMany({
+      where: filter,
       skip,
       take,
       orderBy: { [sortBy]: sortOrder },
     });
 
-    const total = await prisma.order.count();
+    const total = await prisma.order.count({ where: filter });
 
     res.json({ page, pageSize, total, orders });
   } catch (error) {

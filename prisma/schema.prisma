@@ -1,10 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 enum ReservationStatus {
@@ -27,17 +27,24 @@ enum InventoryLogType {
 }
 
 model Product {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
   stock     Int
-  createdAt DateTime @default(now())
+  createdAt DateTime        @default(now())
+
+  reservations Reservation[]
+  orders       Order[]
+  inventoryLogs InventoryLog[]
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+  email     String      @unique
+  createdAt DateTime    @default(now())
+
+  reservations Reservation[]
+  orders       Order[]
 }
 
 model Reservation {
@@ -48,16 +55,27 @@ model Reservation {
   status    ReservationStatus @default(PENDING)
   expiresAt DateTime
   createdAt DateTime          @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  // Optional virtual field for convenience; do NOT specify fields/references here
+  order Order?
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  userId     String
-  productId  String
-  quantity   Int
-  totalPrice Float
-  status     OrderStatus @default(PENDING)
-  createdAt  DateTime    @default(now())
+  id            String      @id @default(cuid())
+  userId        String
+  productId     String
+  quantity      Int
+  totalPrice    Float
+  status        OrderStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  reservationId String?     @unique
+
+  user        User         @relation(fields: [userId], references: [id])
+  product     Product      @relation(fields: [productId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
 }
 
 model InventoryLog {
@@ -67,4 +85,6 @@ model InventoryLog {
   type        InventoryLogType
   description String?
   createdAt   DateTime         @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
 }

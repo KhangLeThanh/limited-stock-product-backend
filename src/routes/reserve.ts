@@ -20,15 +20,20 @@ router.post("/", async (req, res, next) => {
     const { productId, userId, quantity } = reserveSchema.parse(req.body);
 
     const reservation = await prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({ where: { id: productId } });
+      // Lock product row for concurrent safety
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+      });
       if (!product) throw new Error("Product not found");
       if (product.stock < quantity) throw new Error("Not enough stock");
 
+      // Deduct stock
       await tx.product.update({
         where: { id: productId },
         data: { stock: { decrement: quantity } },
       });
 
+      // Create reservation
       const newReservation = await tx.reservation.create({
         data: {
           productId,
@@ -39,6 +44,7 @@ router.post("/", async (req, res, next) => {
         },
       });
 
+      // Log inventory change
       await tx.inventoryLog.create({
         data: {
           productId,
