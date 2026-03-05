@@ -11,7 +11,7 @@ export function requestLogger(
 }
 
 export function errorHandler(
-  err: any,
+  err: Error,
   _req: Request,
   res: Response,
   _next: NextFunction
