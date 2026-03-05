@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 
 import authRouter from "./routes/auth";
-import reserveRouter from "./routes/reserve";
+import { reserveRouter } from "./routes/reserve";
 import checkoutRouter from "./routes/checkout";
 import productRouter from "./routes/products";
 import orderRouter from "./routes/orders";
@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
-app.use("/login", authRouter);
+app.use("/auth", authRouter);
 app.use("/products", productRouter);
 app.use("/reserve", reserveRouter);
 app.use("/checkout", checkoutRouter);

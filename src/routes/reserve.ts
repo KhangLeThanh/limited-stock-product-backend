@@ -1,58 +1,34 @@
+// src/routes/reserve.ts
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import { z } from "zod";
+import { authenticate } from "../middleware/authenticate";
 
 const prisma = new PrismaClient();
-const router = Router();
+export const reserveRouter = Router(); // named export
 
-const schema = z.object({
-  userId: z.string(),
-  productId: z.string(),
-  quantity: z.number().min(1),
-});
+reserveRouter.post("/", authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  const { productId, quantity } = req.body;
 
-router.post("/", async (req, res, next) => {
+  if (!productId || !quantity)
+    return res.status(400).json({ message: "ProductId and quantity required" });
+
   try {
-    const { userId, productId, quantity } = schema.parse(req.body);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (product.stock < quantity)
+      return res.status(400).json({ message: "Not enough stock" });
 
-    const result = await prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-      });
-
-      if (!product || product.stock < quantity) {
-        throw new Error("Not enough stock");
-      }
-
-      await tx.product.update({
-        where: { id: productId },
-        data: { stock: { decrement: quantity } },
-      });
-
-      const reservation = await tx.reservation.create({
-        data: {
-          userId,
-          productId,
-          quantity,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        },
-      });
-
-      await tx.inventoryLog.create({
-        data: {
-          productId,
-          quantity,
-          type: "RESERVATION_CREATED",
-        },
-      });
-
-      return reservation;
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+    const reservation = await prisma.reservation.create({
+      data: { userId, productId, quantity, expiresAt },
     });
 
-    res.json(result);
-  } catch (error) {
-    next(error);
+    return res.json(reservation);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Reservation failed" });
   }
 });
-
-export default router;
