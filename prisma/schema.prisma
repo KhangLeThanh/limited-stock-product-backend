@@ -1,10 +1,10 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum ReservationStatus {
@@ -14,23 +14,20 @@ enum ReservationStatus {
 }
 
 enum OrderStatus {
-  PENDING
   COMPLETED
-  CANCELLED
 }
 
 enum InventoryLogType {
   RESERVATION_CREATED
   RESERVATION_EXPIRED
   ORDER_CREATED
-  STOCK_ADJUSTMENT
 }
 
 model Product {
-  id        String          @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
   stock     Int
-  createdAt DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   reservations Reservation[]
   orders       Order[]
@@ -38,10 +35,10 @@ model Product {
 }
 
 model User {
-  id        String      @id @default(cuid())
+  id        String   @id
   name      String
-  email     String      @unique
-  createdAt DateTime    @default(now())
+  email     String   @unique
+  createdAt DateTime @default(now())
 
   reservations Reservation[]
   orders       Order[]
@@ -56,11 +53,10 @@ model Reservation {
   expiresAt DateTime
   createdAt DateTime          @default(now())
 
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  product Product  @relation(fields: [productId], references: [id])
 
-  // Optional virtual field for convenience; do NOT specify fields/references here
-  order Order?
+  order   Order?
 }
 
 model Order {
@@ -68,13 +64,12 @@ model Order {
   userId        String
   productId     String
   quantity      Int
-  totalPrice    Float
-  status        OrderStatus @default(PENDING)
-  createdAt     DateTime    @default(now())
   reservationId String?     @unique
+  status        OrderStatus @default(COMPLETED)
+  createdAt     DateTime    @default(now())
 
-  user        User         @relation(fields: [userId], references: [id])
-  product     Product      @relation(fields: [productId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
   reservation Reservation? @relation(fields: [reservationId], references: [id])
 }
 

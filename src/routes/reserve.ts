@@ -1,66 +1,55 @@
 import { Router } from "express";
-import {
-  PrismaClient,
-  ReservationStatus,
-  InventoryLogType,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 
 const prisma = new PrismaClient();
 const router = Router();
 
-const reserveSchema = z.object({
-  productId: z.string(),
+const schema = z.object({
   userId: z.string(),
+  productId: z.string(),
   quantity: z.number().min(1),
 });
 
 router.post("/", async (req, res, next) => {
   try {
-    const { productId, userId, quantity } = reserveSchema.parse(req.body);
+    const { userId, productId, quantity } = schema.parse(req.body);
 
-    const reservation = await prisma.$transaction(async (tx) => {
-      // Lock product row for concurrent safety
+    const result = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
         where: { id: productId },
       });
-      if (!product) throw new Error("Product not found");
-      if (product.stock < quantity) throw new Error("Not enough stock");
 
-      // Deduct stock
+      if (!product || product.stock < quantity) {
+        throw new Error("Not enough stock");
+      }
+
       await tx.product.update({
         where: { id: productId },
         data: { stock: { decrement: quantity } },
       });
 
-      // Create reservation
-      const newReservation = await tx.reservation.create({
+      const reservation = await tx.reservation.create({
         data: {
-          productId,
           userId,
+          productId,
           quantity,
-          status: ReservationStatus.PENDING,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000),
         },
       });
 
-      // Log inventory change
       await tx.inventoryLog.create({
         data: {
           productId,
           quantity,
-          type: InventoryLogType.RESERVATION_CREATED,
-          description: `Reservation ${newReservation.id} created for user ${userId}`,
+          type: "RESERVATION_CREATED",
         },
       });
 
-      return newReservation;
+      return reservation;
     });
 
-    res.status(201).json({
-      reservationId: reservation.id,
-      expiresAt: reservation.expiresAt,
-    });
+    res.json(result);
   } catch (error) {
     next(error);
   }

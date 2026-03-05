@@ -1,37 +1,38 @@
 import express from "express";
 import cors from "cors";
-import reserveRouter from "./src/routes/reserve";
-import checkoutRouter from "./src/routes/checkout";
-import productsRouter from "./src/routes/products";
-import { expireReservations } from "./src/cron/expireReservations";
-import { requestLogger, errorHandler } from "./src/middleware/errorHandler";
+
+import reserveRouter from "./routes/reserve";
+import checkoutRouter from "./routes/checkout";
+import productRouter from "./routes/products";
+import orderRouter from "./routes/orders";
+
+import { expireReservations } from "./cron/expireReservations";
+import { requestLogger, errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
-// CORS
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-  })
-);
-
+app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
-// Routes
+app.use("/products", productRouter);
 app.use("/reserve", reserveRouter);
 app.use("/checkout", checkoutRouter);
-app.use("/products", productsRouter);
+app.use("/orders", orderRouter);
 
-// Health
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// Run expiration cron every minute
-setInterval(expireReservations, 60 * 1000);
+app.get("/metrics", (_req, res) => {
+  res.json({
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
+});
 
-// Error handling
-app.use(errorHandler);
+setInterval(() => {
+  expireReservations();
+}, 60000);
 
-app.listen(process.env.PORT || 4000, () =>
-  console.log("Server running on port 4000")
-);
+app.listen(4000, () => {
+  console.log("Server running on port 4000");
+});
