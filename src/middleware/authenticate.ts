@@ -1,15 +1,21 @@
-// src/middlewares/auth.ts
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-export const authenticate = (req: any, res: Response, next: NextFunction) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader?.split(" ")[1];
+const SECRET = process.env.JWT_SECRET || "secret";
 
-  if (!token) return res.status(401).json({ message: "Unauthorized" });
+export const authenticate = (
+  req: Request & { userId?: string },
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) return res.status(401).json({ message: "No token" });
+
+  const token = authHeader.split(" ")[1]; // Bearer <token>
+  if (!token) return res.status(401).json({ message: "Invalid token" });
 
   try {
-    const payload: any = jwt.verify(token, process.env.JWT_SECRET || "secret");
+    const payload = jwt.verify(token, SECRET) as { userId: string };
     req.userId = payload.userId;
     next();
   } catch (err) {

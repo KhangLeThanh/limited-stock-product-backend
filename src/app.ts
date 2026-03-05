@@ -8,7 +8,7 @@ import productRouter from "./routes/products";
 import orderRouter from "./routes/orders";
 
 import { expireReservations } from "./cron/expireReservations";
-import { requestLogger, errorHandler } from "./middleware/errorHandler";
+import { requestLogger } from "./middleware/errorHandler";
 
 const app = express();
 

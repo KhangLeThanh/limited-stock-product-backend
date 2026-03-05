@@ -1,10 +1,10 @@
 // src/routes/reserve.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authenticate } from "../middleware/authenticate";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-export const reserveRouter = Router(); // named export
+export const reserveRouter = Router();
 
 reserveRouter.post("/", authenticate, async (req: any, res) => {
   const userId = req.userId;
