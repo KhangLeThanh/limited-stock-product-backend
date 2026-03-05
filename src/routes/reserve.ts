@@ -24,6 +24,9 @@ reserveRouter.post("/", authenticate, async (req: any, res) => {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
     const reservation = await prisma.reservation.create({
       data: { userId, productId, quantity, expiresAt },
+      include: {
+        product: true,
+      },
     });
 
     return res.json(reservation);
