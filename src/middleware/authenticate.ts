@@ -1,22 +1,24 @@
+// src/middleware/authenticate.ts
+
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-const SECRET = process.env.JWT_SECRET || "secret";
+export const authenticate = (req: any, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
 
-export const authenticate = (
-  req: Request & { userId?: string },
-  res: Response,
-  next: NextFunction
-) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) return res.status(401).json({ message: "No token" });
+  if (!authHeader) {
+    return res.status(401).json({ message: "Missing token" });
+  }
 
-  const token = authHeader.split(" ")[1]; // Bearer <token>
-  if (!token) return res.status(401).json({ message: "Invalid token" });
+  const token = authHeader.split(" ")[1];
 
   try {
-    const payload = jwt.verify(token, SECRET) as { userId: string };
-    req.userId = payload.userId;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      userId: string;
+    };
+
+    req.userId = decoded.userId;
+
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token" });
