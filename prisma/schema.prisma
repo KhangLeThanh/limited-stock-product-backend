@@ -14,48 +14,48 @@ enum ReservationStatus {
 }
 
 enum OrderStatus {
+  PENDING
   COMPLETED
+  CANCELLED
 }
 
 enum InventoryLogType {
   RESERVATION_CREATED
   RESERVATION_EXPIRED
   ORDER_CREATED
+  STOCK_ADJUSTMENT
 }
 
 model Product {
-  id        String   @id @default(cuid())
-  name      String
-  stock     Int
-  createdAt DateTime @default(now())
-
-  reservations Reservation[]
-  orders       Order[]
+  id            String          @id @default(cuid())
+  name          String
+  stock         Int
+  createdAt     DateTime        @default(now())
+  reservations  Reservation[]
+  orders        Order[]
   inventoryLogs InventoryLog[]
 }
 
 model User {
-  id        String   @id
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-
-  reservations Reservation[]
-  orders       Order[]
+  id            String          @id               // username
+  name          String
+  password      String
+  createdAt     DateTime        @default(now())
+  reservations  Reservation[]
+  orders        Order[]
 }
 
 model Reservation {
-  id        String            @id @default(cuid())
-  userId    String
-  productId String
-  quantity  Int
-  status    ReservationStatus @default(PENDING)
-  expiresAt DateTime
-  createdAt DateTime          @default(now())
+  id         String            @id @default(cuid())
+  userId     String
+  productId  String
+  quantity   Int
+  status     ReservationStatus @default(PENDING)
+  expiresAt  DateTime
+  createdAt  DateTime          @default(now())
 
   user    User     @relation(fields: [userId], references: [id])
   product Product  @relation(fields: [productId], references: [id])
-
   order   Order?
 }
 
@@ -64,9 +64,9 @@ model Order {
   userId        String
   productId     String
   quantity      Int
-  reservationId String?     @unique
-  status        OrderStatus @default(COMPLETED)
+  status        OrderStatus @default(PENDING)
   createdAt     DateTime    @default(now())
+  reservationId String?     @unique
 
   user        User        @relation(fields: [userId], references: [id])
   product     Product     @relation(fields: [productId], references: [id])
