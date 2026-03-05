@@ -2,9 +2,9 @@ import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const router = Router();
+export const productRouter = Router();
 
-router.get("/", async (req, res) => {
+productRouter.get("/", async (req, res) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 10;
 
@@ -25,5 +25,3 @@ router.get("/", async (req, res) => {
     products,
   });
 });
-
-export default router;

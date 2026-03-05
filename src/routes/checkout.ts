@@ -1,57 +1,54 @@
+// src/routes/checkout.ts
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import { z } from "zod";
+import { authenticate } from "../middleware/authenticate";
 
 const prisma = new PrismaClient();
-const router = Router();
+export const checkoutRouter = Router();
 
-const schema = z.object({
-  reservationId: z.string(),
-});
+checkoutRouter.post("/", authenticate, async (req: any, res) => {
+  const { reservationId } = req.body;
 
-router.post("/", async (req, res, next) => {
+  if (!reservationId) {
+    return res.status(400).json({ message: "reservationId required" });
+  }
+
   try {
-    const { reservationId } = schema.parse(req.body);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const reservation = await tx.reservation.findUnique({
-        where: { id: reservationId },
-      });
-
-      if (!reservation) throw new Error("Reservation not found");
-
-      if (reservation.status !== "PENDING")
-        throw new Error("Reservation not valid");
-
-      const order = await tx.order.create({
-        data: {
-          userId: reservation.userId,
-          productId: reservation.productId,
-          quantity: reservation.quantity,
-          reservationId: reservation.id,
-        },
-      });
-
-      await tx.reservation.update({
-        where: { id: reservationId },
-        data: { status: "COMPLETED" },
-      });
-
-      await tx.inventoryLog.create({
-        data: {
-          productId: reservation.productId,
-          quantity: reservation.quantity,
-          type: "ORDER_CREATED",
-        },
-      });
-
-      return order;
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
     });
 
-    res.json(result);
-  } catch (error) {
-    next(error);
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    if (reservation.status !== "PENDING") {
+      return res.status(400).json({ message: "Reservation already processed" });
+    }
+
+    if (new Date(reservation.expiresAt) < new Date()) {
+      return res.status(400).json({ message: "Reservation expired" });
+    }
+
+    // 🔹 decrease stock
+    await prisma.product.update({
+      where: { id: reservation.productId },
+      data: {
+        stock: {
+          decrement: reservation.quantity,
+        },
+      },
+    });
+
+    // 🔹 mark reservation completed
+    await prisma.reservation.update({
+      where: { id: reservationId },
+      data: { status: "COMPLETED" },
+    });
+
+    return res.json({ message: "Checkout successful" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Checkout failed" });
   }
 });
-
-export default router;

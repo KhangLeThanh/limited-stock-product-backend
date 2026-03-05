@@ -4,9 +4,9 @@ import { PrismaClient, OrderStatus } from "@prisma/client";
 import { SortField, SortOrder } from "../utils/enum";
 
 const prisma = new PrismaClient();
-const router = Router();
+export const orderRouter = Router();
 
-router.get("/", async (req, res, next) => {
+orderRouter.get("/", async (req, res, next) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
@@ -51,5 +51,3 @@ router.get("/", async (req, res, next) => {
     next(error);
   }
 });
-
-export default router;

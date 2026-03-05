@@ -3,9 +3,9 @@ import cors from "cors";
 
 import authRouter from "./routes/auth";
 import { reserveRouter } from "./routes/reserve";
-import checkoutRouter from "./routes/checkout";
-import productRouter from "./routes/products";
-import orderRouter from "./routes/orders";
+import { checkoutRouter } from "./routes/checkout";
+import { productRouter } from "./routes/products";
+import { orderRouter } from "./routes/orders";
 
 import { expireReservations } from "./cron/expireReservations";
 import { requestLogger } from "./middleware/errorHandler";
